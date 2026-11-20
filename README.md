@@ -1,0 +1,1 @@
+# -Desafios-em-Computa-o-Paralela-com-OpenMP
