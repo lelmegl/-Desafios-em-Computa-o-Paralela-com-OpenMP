@@ -114,6 +114,22 @@ static void calcular_mandelbrot_paralelo(int W, int H, int Imax, int *grid) {
      *    `OMP_SCHEDULE="guided"` no relatório sem precisar recompilar, ou fixe a
      *    cláusula vencedora no código final entregue!
      */
+
+    /*
+     * SOLUÇÃO DO TODO 1 (Membro 1 - laço externo y + análise static vs static,1):
+     * - Paralelizamos o laço EXTERNO `y`: cada linha é uma unidade de trabalho de
+     *   granularidade grossa (W pixels), o que amortiza o overhead do escalonador.
+     * - `x`, `cr`, `ci`, `zr`, `zi`, `t`, `it` são declarados dentro do laço,
+     *   portanto PRIVADOS por thread. `W`, `H`, `Imax` e `grid` são SHARED: os três
+     *   primeiros só são lidos e cada linha `y` escreve num trecho disjunto de `grid`
+     *   (sem condição de corrida, sem atomic/critical).
+     * - O `while` interno NÃO é paralelizado: z_{n+1} depende de z_n (RAW estrita).
+     * - `schedule(runtime)`: a política vem de OMP_SCHEDULE, permitindo comparar
+     *   static, static,1, dynamic,chunk e guided sem recompilar. Sem OMP_SCHEDULE
+     *   definida, o libgomp usa `dynamic,1`. No código final, trocar por
+     *   a política vencedora fixa (decisão do grupo após os testes).
+     */
+    #pragma omp parallel for schedule(runtime)
     for (int y = 0; y < H; y++) {
         for (int x = 0; x < W; x++) {
             double cr = -2.0 + 3.0 * x / W;
@@ -132,6 +148,41 @@ static void calcular_mandelbrot_paralelo(int W, int H, int Imax, int *grid) {
         }
     }
 }
+
+#ifdef PERFIL_THREADS
+/*
+ * Instrumentação opcional (NÃO entra no benchmark oficial):
+ * mede o tempo ocupado de cada thread para evidenciar o desbalanceamento.
+ * Compile: gcc -O3 -march=native -fopenmp -DPERFIL_THREADS paralelo.c -o P8_perfil
+ * Rode:    OMP_NUM_THREADS=4 OMP_SCHEDULE=static ./P8_perfil < entrada.in > /dev/null
+ */
+static void perfil_por_thread(int W, int H, int Imax, int *grid) {
+    double t_thread[256] = {0.0};
+    #pragma omp parallel
+    {
+        double t0 = omp_get_wtime();
+        #pragma omp for schedule(runtime) nowait
+        for (int y = 0; y < H; y++) {
+            for (int x = 0; x < W; x++) {
+                double cr = -2.0 + 3.0 * x / W;
+                double ci = -1.5 + 3.0 * y / H;
+                double zr = 0.0, zi = 0.0;
+                int it = 0;
+                while (it < Imax && zr * zr + zi * zi <= 4.0) {
+                    double t = zr * zr - zi * zi + cr;
+                    zi = 2.0 * zr * zi + ci;
+                    zr = t;
+                    it++;
+                }
+                grid[(long)y * W + x] = it;
+            }
+        }
+        t_thread[omp_get_thread_num()] = omp_get_wtime() - t0;
+    }
+    for (int i = 0; i < omp_get_max_threads(); i++)
+        fprintf(stderr, "[Perfil P8] thread %d ocupada por %.4f s\n", i, t_thread[i]);
+}
+#endif
 
 /*
  * ----------------------------------------------------------------------------
@@ -230,6 +281,8 @@ int main(void) {
     fprintf(stderr, "[Benchmark P8] Threads (P) = %d | T_seq = %.6f s | T_par (mediana) = %.6f s\n",
             P, tempo_seq, mediana_par);
     free(grid_seq);
+#elif defined(PERFIL_THREADS)
+    perfil_por_thread(W, H, Imax, grid_par);
 #else
     /* Modo padrão compatível com ./test.sh */
     double t0 = omp_get_wtime();
