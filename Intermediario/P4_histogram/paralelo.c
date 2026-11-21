@@ -137,6 +137,34 @@ static void calcular_histograma_paralelo(const unsigned char *pixels, long M, lo
      * - No final, um bloco critical soma os 256 bins privados no vetor global histo
      *   (roda apenas 1 vez por thread no fim).
      */
+    /*
+     * SOLUÇÃO DO TODO 1 (Membro 2 - Abordagem B: Reduction em Array + prova do atomic):
+     * - Abordagem B (compilar com -DP4_ABORDAGEM_B, alvo `make P4_bench_B`):
+     *   `reduction(+:histo[:NUM_BINS])` (OpenMP 4.5+) faz o próprio OpenMP criar
+     *   uma cópia privada dos 256 bins para cada thread, zerada, e somar todas as
+     *   cópias no `histo` global ao final do laço. É a mesma ideia da Abordagem A
+     *   (privatização), mas sem escrever o vetor local nem o critical à mão.
+     *   `schedule(static)`: cada pixel custa igual (1 leitura + 1 incremento).
+     * - Anti-exemplo (compilar com -DP4_ATOMIC, alvo `make P4_bench_atomic`):
+     *   `#pragma omp atomic` em cada `histo[v]++`. O resultado é CORRETO, mas
+     *   são M incrementos atômicos disputando as mesmas 256 posições (2 KB =
+     *   32 linhas de cache) que ficam "pulando" entre os núcleos (ping-pong de
+     *   cache). Serve só para medir e provar no relatório por que é proibido:
+     *   o tempo fica MAIOR que o sequencial.
+     * - Sem nenhuma das duas flags, compila a Abordagem A (Membro 1), abaixo.
+     */
+#if defined(P4_ABORDAGEM_B)
+    #pragma omp parallel for reduction(+:histo[:NUM_BINS]) schedule(static)
+    for (long i = 0; i < M; i++) {
+        histo[pixels[i]]++;
+    }
+#elif defined(P4_ATOMIC)
+    #pragma omp parallel for schedule(static)
+    for (long i = 0; i < M; i++) {
+        #pragma omp atomic
+        histo[pixels[i]]++;
+    }
+#else
     #pragma omp parallel
     {
         long local_histo[NUM_BINS] __attribute__((aligned(64))) = {0};
@@ -153,6 +181,7 @@ static void calcular_histograma_paralelo(const unsigned char *pixels, long M, lo
             }
         }
     }
+#endif
 }
 
 /*
