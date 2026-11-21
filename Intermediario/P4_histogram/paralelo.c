@@ -127,8 +127,31 @@ static void calcular_histograma_paralelo(const unsigned char *pixels, long M, lo
      *       diretamente sobre o laço `for (long i = 0; i < M; i++)`.
      *    2. Dica para o relatório: meça e compare as Abordagens A e B!
      */
-    for (long i = 0; i < M; i++) {
-        histo[pixels[i]]++;
+
+    /*
+     * SOLUÇÃO DO TODO 1 (Membro 1 - Abordagem A: Histograma Privado por Thread):
+     * - Cada thread cria seu próprio vetor local_histo[256] zerado e alinhado em
+     *   64 bytes (tamanho da linha de cache L1) para evitar False Sharing.
+     * - O laço principal divide os M pixels com schedule(static) nowait, contando
+     *   direto no vetor privado (sem disputas de memória durante os M passos).
+     * - No final, um bloco critical soma os 256 bins privados no vetor global histo
+     *   (roda apenas 1 vez por thread no fim).
+     */
+    #pragma omp parallel
+    {
+        long local_histo[NUM_BINS] __attribute__((aligned(64))) = {0};
+
+        #pragma omp for schedule(static) nowait
+        for (long i = 0; i < M; i++) {
+            local_histo[pixels[i]]++;
+        }
+
+        #pragma omp critical
+        {
+            for (int b = 0; b < NUM_BINS; b++) {
+                histo[b] += local_histo[b];
+            }
+        }
     }
 }
 
