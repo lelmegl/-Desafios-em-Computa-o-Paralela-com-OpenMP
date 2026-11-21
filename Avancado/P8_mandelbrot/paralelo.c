@@ -128,8 +128,20 @@ static void calcular_mandelbrot_paralelo(int W, int H, int Imax, int *grid) {
      *   static, static,1, dynamic,chunk e guided sem recompilar. Sem OMP_SCHEDULE
      *   definida, o libgomp usa `dynamic,1`. No código final, trocar por
      *   a política vencedora fixa (decisão do grupo após os testes).
+     *
+     * SOLUÇÃO DO TODO 1 (Membro 2 - Escalonamento Dinâmico e Guiado / Ajuste de Chunk):
+     * - Testamos dynamic com chunks 1, 16 e 64, além de guided:
+     *   * schedule(dynamic, 1): distribui 1 linha por vez (bom balanceamento, mas mais overhead na fila).
+     *   * schedule(dynamic, 16): ponto ótimo! Blocos de 16 linhas diminuem o overhead da fila em 16x
+     *     e continuam pequenos o suficiente para nenhuma thread ficar parada no final.
+     *   * schedule(dynamic, 64): blocos muito grandes, pode sobrar uma thread sozinha no fim.
+     *   * schedule(guided): começa com blocos grandes e vai diminuindo até 1 linha no final.
      */
-    #pragma omp parallel for schedule(runtime)
+    // #pragma omp parallel for schedule(runtime)
+    // #pragma omp parallel for schedule(dynamic, 1)
+    // #pragma omp parallel for schedule(dynamic, 64)
+    // #pragma omp parallel for schedule(guided)
+    #pragma omp parallel for schedule(dynamic, 16)
     for (int y = 0; y < H; y++) {
         for (int x = 0; x < W; x++) {
             double cr = -2.0 + 3.0 * x / W;
