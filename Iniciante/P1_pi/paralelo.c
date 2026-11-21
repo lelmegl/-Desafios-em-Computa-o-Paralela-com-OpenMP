@@ -102,10 +102,27 @@ static double calcular_pi_paralelo(long long N) {
      *   em ponto flutuante, pi_par difere de pi_seq lá pelo 13º-15º dígito.
      *   A diferença fica muito abaixo da tolerância |Delta_rel| <= 1e-9.
      */
+    /*
+     * SOLUÇÃO DO TODO 1 (Membro 1 - Kernel Paralelo Base e Escopo):
+     * - `parallel for`: divide as N iterações do laço entre as P threads.
+     * - `reduction(+:sum)`: cada thread recebe uma cópia PRIVADA de `sum`
+     *   (iniciada em 0.0, elemento neutro da soma) e acumula só nela. No fim do
+     *   laço o OpenMP soma as P cópias na `sum` original. Assim nenhuma thread
+     *   escreve na mesma variável que outra: sem condição de corrida e sem
+     *   false sharing (as cópias não ficam num vetor compartilhado).
+     * - Sem o reduction, `sum += ...` em `sum` compartilhada perderia parcelas
+     *   (ler-somar-escrever de duas threads ao mesmo tempo) e pi sairia errado.
+     *   Usar `atomic` resolveria a corrida, mas seriam N = 10^9 operações
+     *   atômicas na mesma variável: mais lento que o sequencial.
+     * - `schedule(static)`: toda iteração tem o mesmo custo, então dividir em P
+     *   blocos contíguos iguais já balanceia a carga, sem custo de fila.
+     * - Escopo: `i` (índice do omp for) e `x` (declarada dentro do laço) são
+     *   PRIVADAS; `N` e `step` são SHARED (só leitura); `sum` é REDUCTION.
+     */
 #if defined(P1_SIMD)
     #pragma omp parallel for simd reduction(+:sum) schedule(static)
 #else
-    /* Versão base do TODO 1 (Membro 1): parallel for reduction(+:sum) schedule(static) */
+    #pragma omp parallel for reduction(+:sum) schedule(static)
 #endif
     for (long long i = 0; i < N; i++) {
         double x = (i + 0.5) * step;
