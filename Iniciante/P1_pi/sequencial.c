@@ -1,5 +1,5 @@
 /*
- * Compilação: gcc -O3 -march=native -fopenmp sequencial.c -o sequencial
+ * Compilação: gcc -O3 -march=native -fopenmp sequencial.c -o sequencial */
 
 
 #include <stdio.h>

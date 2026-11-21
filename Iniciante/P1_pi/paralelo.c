@@ -87,6 +87,26 @@ static double calcular_pi_paralelo(long long N) {
      *   (`#pragma omp parallel for simd reduction(+:sum)`) e analise se o
      *   compilador com `-O3 -march=native` já vetorizava o laço.
      */
+
+    /*
+     * SOLUÇÃO DO TODO 1 (Membro 2 - Variante SIMD e Reassociação IEEE 754):
+     * - Compilando com -DP1_SIMD (alvo `make P1_bench_simd`), o laço usa
+     *   `parallel for simd`: além de dividir as N iterações entre as threads,
+     *   cada thread processa seu bloco em vetores AVX2 (4 doubles por instrução).
+     * - Sem `simd`, o `-O3 -march=native` NÃO vetoriza este laço: vetorizar uma
+     *   soma em double exige reordenar as parcelas, e o padrão IEEE 754 proíbe o
+     *   compilador de fazer isso sozinho (só com -ffast-math). A cláusula `simd`
+     *   dá essa permissão de forma localizada, só neste laço.
+     * - Efeito colateral: a soma passa a ser feita em 4 "pistas" por thread e
+     *   depois combinada, ou seja, outra ordem de soma. Como (a+b)+c != a+(b+c)
+     *   em ponto flutuante, pi_par difere de pi_seq lá pelo 13º-15º dígito.
+     *   A diferença fica muito abaixo da tolerância |Delta_rel| <= 1e-9.
+     */
+#if defined(P1_SIMD)
+    #pragma omp parallel for simd reduction(+:sum) schedule(static)
+#else
+    /* Versão base do TODO 1 (Membro 1): parallel for reduction(+:sum) schedule(static) */
+#endif
     for (long long i = 0; i < N; i++) {
         double x = (i + 0.5) * step;
         sum += 4.0 / (1.0 + x * x);

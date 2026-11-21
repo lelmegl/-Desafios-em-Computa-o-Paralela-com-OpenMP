@@ -1,0 +1,15 @@
+# binarios gerados pelo make (caminhos completos para nao ignorar as pastas)
+/Iniciante/P1_pi/P1_pi
+/Iniciante/P1_pi/P1_bench
+/Iniciante/P1_pi/P1_bench_simd
+/Iniciante/P1_pi/sequencial
+/Intermediario/P4_histogram/P4_histogram
+/Intermediario/P4_histogram/P4_bench
+/Intermediario/P4_histogram/sequencial
+/Avancado/P8_mandelbrot/P8_mandelbrot
+/Avancado/P8_mandelbrot/P8_bench
+/Avancado/P8_mandelbrot/P8_perfil
+/Avancado/P8_mandelbrot/sequencial
+*.expected
+# entradas de benchmark (grandes demais para o GitHub)
+entrada_grande.in
