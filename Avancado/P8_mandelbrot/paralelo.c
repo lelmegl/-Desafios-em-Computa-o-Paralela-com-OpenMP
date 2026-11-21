@@ -137,11 +137,28 @@ static void calcular_mandelbrot_paralelo(int W, int H, int Imax, int *grid) {
      *   * schedule(dynamic, 64): blocos muito grandes, pode sobrar uma thread sozinha no fim.
      *   * schedule(guided): começa com blocos grandes e vai diminuindo até 1 linha no final.
      */
+    /*
+     * SOLUÇÃO DO TODO 1 (Membro 3 - collapse(2) e Prevenção de False Sharing):
+     * - collapse(2) junta os laços `y` e `x` num único espaço de W*H iterações
+     *   (pixels em vez de linhas), deixando a divisão de trabalho mais fina.
+     * - Os dois laços são perfeitamente aninhados (nada entre o `for y` e o
+     *   `for x`), condição exigida pelo collapse. `y` e `x` ficam privados.
+     * - FALSE SHARING: uma linha de cache tem 64 bytes = 16 ints. Com collapse,
+     *   pixels vizinhos podem ir para threads diferentes; se duas threads
+     *   escrevem na mesma linha de cache, ela fica sendo invalidada entre os
+     *   núcleos. Por isso o chunk precisa ser >= 16 pixels: usamos 256.
+     * - Compilar esta versão: make P8_collapse P8_collapse_bench
+     *   (sem -DUSAR_COLLAPSE o código continua com dynamic,16 por linha).
+     */
+#ifdef USAR_COLLAPSE
+    #pragma omp parallel for collapse(2) schedule(runtime)
+#else
     // #pragma omp parallel for schedule(runtime)
     // #pragma omp parallel for schedule(dynamic, 1)
     // #pragma omp parallel for schedule(dynamic, 64)
     // #pragma omp parallel for schedule(guided)
     #pragma omp parallel for schedule(dynamic, 16)
+#endif
     for (int y = 0; y < H; y++) {
         for (int x = 0; x < W; x++) {
             double cr = -2.0 + 3.0 * x / W;
@@ -258,6 +275,11 @@ int main(void) {
         fprintf(stderr, "Erro na leitura de W, H e Imax.\n");
         return 1;
     }
+
+#ifdef USAR_COLLAPSE
+    /* Membro 3: sem OMP_SCHEDULE definida, collapse(2) usa guided,256 */
+    if (getenv("OMP_SCHEDULE") == NULL) omp_set_schedule(omp_sched_guided, 256);
+#endif
 
     long total_pixels = (long)W * H;
     int *grid_par = (int *)malloc(sizeof(int) * (size_t)total_pixels);
