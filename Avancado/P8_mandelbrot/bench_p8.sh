@@ -5,14 +5,19 @@
 #  Parte 2: tabela oficial P em {1,2,4,6} com a politica fixada no codigo (P8_bench)
 #           -> resultados_p8.csv + graficos_p8.png (validacao byte a byte em cada P)
 #  Parte 1b: variante collapse(2) do Membro 3 (P8_collapse_bench) com dynamic,256 e guided,256
-# Uso (dentro de Avancado/P8_mandelbrot):  ./bench_p8.sh [W H Imax]   (padrao 4000 4000 10000)
+# Entrada padrao = referencia do Apendice B.4: W = H = 10^4, Imax = 10^4 (leva horas).
+# Para rodar em etapas: PARTE=1 ./bench_p8.sh  (so schedules)  |  PARTE=2 ./bench_p8.sh  (so tabela)
+# Uso (dentro de Avancado/P8_mandelbrot):  ./bench_p8.sh [W H Imax]
 set -euo pipefail
 cd "$(dirname "$0")"
-W="${1:-4000}"; H="${2:-4000}"; IMAX="${3:-10000}"
+W="${1:-10000}"; H="${2:-10000}"; IMAX="${3:-10000}"
+PARTE="${PARTE:-todas}"
 ENTRADA="entrada_grande.in"
 echo "$W $H $IMAX" > "$ENTRADA"
-make -s P8_bench P8_perfil P8_collapse_bench
-export OMP_PROC_BIND=close OMP_PLACES=cores
+source ../../scripts/ambiente.sh
+make -s -B CC="$CC" CFLAGS="$CFLAGS" P8_bench P8_perfil P8_collapse_bench
+
+if [ "$PARTE" != 2 ]; then
 
 echo "=== Parte 1: politicas de schedule (P = 6, entrada $W x $H, Imax = $IMAX) ==="
 echo "schedule,T_total_s,max_min" > comparacao_schedules_p8.csv
@@ -34,6 +39,9 @@ for S in "dynamic,256" "guided,256"; do
     echo "\"collapse(2) $S\",$T," >> comparacao_schedules_p8.csv
 done
 
+fi
+
+if [ "$PARTE" != 1 ]; then
 echo; echo "=== Parte 2: tabela oficial (politica fixada no paralelo.c) ==="
 echo "P,T_par_s,T_seq_s" > resultados_p8.csv
 for P in 1 2 4 6; do
@@ -46,3 +54,4 @@ for P in 1 2 4 6; do
     echo "$P,$TPAR,$TSEQ" >> resultados_p8.csv
 done
 python3 ../../scripts/plot_speedup.py resultados_p8.csv "P8 - Mandelbrot" graficos_p8.png
+fi

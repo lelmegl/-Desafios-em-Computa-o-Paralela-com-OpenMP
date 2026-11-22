@@ -3,11 +3,13 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 FAIL=0
+# Compilador com OpenMP (no macOS: GCC do Homebrew). Ver scripts/ambiente.sh
+SEM_AMBIENTE_TXT=1 source "$ROOT/scripts/ambiente.sh" || exit 1
 
 run_c() { # $1=dir $2=binary $3=stdin $4=expected $5=is_float
     local dir="$1" bin="$2" in="$3" exp="$4" is_float="${5:-0}"
     echo "== $dir =="
-    ( cd "$ROOT/$dir" && make -s ) || { echo "  COMPILE FAIL"; FAIL=1; return; }
+    ( cd "$ROOT/$dir" && make -s CC="$CC" CFLAGS="$CFLAGS" ) || { echo "  COMPILE FAIL"; FAIL=1; return; }
     if [ ! -f "$ROOT/$dir/$exp" ]; then
         ( cd "$ROOT/$dir" && ./sequencial < "$in" > "$exp" 2>/dev/null )
         echo "  (gerado $exp a partir do sequencial de referencia)"
