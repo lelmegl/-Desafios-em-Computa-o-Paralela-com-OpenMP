@@ -1,0 +1,32 @@
+== base P=1
+[Validacao P1] pi_seq = 3.141592653589971 | pi_par = 3.141592653589971
+[Validacao P1] |Delta_abs| = 0.000e+00 | |Delta_rel| = 0.000e+00 (Limite: 1.000e-09)
+[Benchmark P1] Threads (P) = 1 | T_seq = 1.127498 s | T_par (mediana) = 1.120243 s
+== base P=2
+[Validacao P1] pi_seq = 3.141592653589971 | pi_par = 3.141592653589901
+[Validacao P1] |Delta_abs| = 6.972e-14 | |Delta_rel| = 2.219e-14 (Limite: 1.000e-09)
+[Benchmark P1] Threads (P) = 2 | T_seq = 1.119409 s | T_par (mediana) = 0.613864 s
+== base P=4
+[Validacao P1] pi_seq = 3.141592653589971 | pi_par = 3.141592653589821
+[Validacao P1] |Delta_abs| = 1.497e-13 | |Delta_rel| = 4.764e-14 (Limite: 1.000e-09)
+[Benchmark P1] Threads (P) = 4 | T_seq = 1.119110 s | T_par (mediana) = 0.301588 s
+== base P=6
+[Validacao P1] pi_seq = 3.141592653589971 | pi_par = 3.141592653589682
+[Validacao P1] |Delta_abs| = 2.887e-13 | |Delta_rel| = 9.188e-14 (Limite: 1.000e-09)
+[Benchmark P1] Threads (P) = 6 | T_seq = 1.124771 s | T_par (mediana) = 0.221859 s
+== simd P=1
+[Validacao P1] pi_seq = 3.141592653589971 | pi_par = 3.141592653589753
+[Validacao P1] |Delta_abs| = 2.180e-13 | |Delta_rel| = 6.941e-14 (Limite: 1.000e-09)
+[Benchmark P1] Threads (P) = 1 | T_seq = 1.122493 s | T_par (mediana) = 0.281280 s
+== simd P=2
+[Validacao P1] pi_seq = 3.141592653589971 | pi_par = 3.141592653589799
+[Validacao P1] |Delta_abs| = 1.714e-13 | |Delta_rel| = 5.456e-14 (Limite: 1.000e-09)
+[Benchmark P1] Threads (P) = 2 | T_seq = 1.121507 s | T_par (mediana) = 0.151384 s
+== simd P=4
+[Validacao P1] pi_seq = 3.141592653589971 | pi_par = 3.141592653589788
+[Validacao P1] |Delta_abs| = 1.825e-13 | |Delta_rel| = 5.810e-14 (Limite: 1.000e-09)
+[Benchmark P1] Threads (P) = 4 | T_seq = 1.151351 s | T_par (mediana) = 0.080926 s
+== simd P=6
+[Validacao P1] pi_seq = 3.141592653589971 | pi_par = 3.141592653589794
+[Validacao P1] |Delta_abs| = 1.763e-13 | |Delta_rel| = 5.612e-14 (Limite: 1.000e-09)
+[Benchmark P1] Threads (P) = 6 | T_seq = 1.120792 s | T_par (mediana) = 0.057170 s
