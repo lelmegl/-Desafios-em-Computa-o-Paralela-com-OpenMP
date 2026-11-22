@@ -187,6 +187,7 @@ static void calcular_mandelbrot_paralelo(int W, int H, int Imax, int *grid) {
  */
 static void perfil_por_thread(int W, int H, int Imax, int *grid) {
     double t_thread[256] = {0.0};
+    double t_ini = omp_get_wtime();
     #pragma omp parallel
     {
         double t0 = omp_get_wtime();
@@ -208,8 +209,17 @@ static void perfil_por_thread(int W, int H, int Imax, int *grid) {
         }
         t_thread[omp_get_thread_num()] = omp_get_wtime() - t0;
     }
-    for (int i = 0; i < omp_get_max_threads(); i++)
+    double t_total = omp_get_wtime() - t_ini;
+    int P = omp_get_max_threads();
+    double t_min = t_thread[0], t_max = t_thread[0];
+    for (int i = 0; i < P; i++) {
         fprintf(stderr, "[Perfil P8] thread %d ocupada por %.4f s\n", i, t_thread[i]);
+        if (t_thread[i] < t_min) t_min = t_thread[i];
+        if (t_thread[i] > t_max) t_max = t_thread[i];
+    }
+    /* Desbalanceamento = thread mais carregada / mais ociosa (1.00 = perfeito) */
+    fprintf(stderr, "[Perfil P8] Tempo total = %.4f s | max/min = %.2f\n",
+            t_total, (t_min > 0.0) ? t_max / t_min : 0.0);
 }
 #endif
 

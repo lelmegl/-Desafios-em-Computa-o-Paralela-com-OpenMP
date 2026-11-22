@@ -90,18 +90,44 @@ static double calcular_pi_paralelo(long long N) {
 
     /*
      * SOLUÇÃO DO TODO 1 (Membro 2 - Variante SIMD e Reassociação IEEE 754):
-     * - Compilando com -DP1_SIMD (alvo `make P1_bench_simd`), o laço usa
-     *   `parallel for simd`: além de dividir as N iterações entre as threads,
-     *   cada thread processa seu bloco em vetores AVX2 (4 doubles por instrução).
-     * - Sem `simd`, o `-O3 -march=native` NÃO vetoriza este laço: vetorizar uma
-     *   soma em double exige reordenar as parcelas, e o padrão IEEE 754 proíbe o
-     *   compilador de fazer isso sozinho (só com -ffast-math). A cláusula `simd`
-     *   dá essa permissão de forma localizada, só neste laço.
-     * - Efeito colateral: a soma passa a ser feita em 4 "pistas" por thread e
-     *   depois combinada, ou seja, outra ordem de soma. Como (a+b)+c != a+(b+c)
-     *   em ponto flutuante, pi_par difere de pi_seq lá pelo 13º-15º dígito.
-     *   A diferença fica muito abaixo da tolerância |Delta_rel| <= 1e-9.
+     * Alvo `make P1_bench_simd` (compila com -DP1_SIMD).
+     *
+     * 1ª tentativa (ingênua): `#pragma omp parallel for simd reduction(+:sum)`
+     *    direto no laço abaixo. NÃO vetorizou: no assembly só há `vdivsd`
+     *    (divisão escalar) e o tempo com P = 1 ficou igual ao da versão base
+     *    (~1,02 s), com o MESMO valor de pi em todos os P. Motivo: o índice `i`
+     *    é `long long` e o laço calcula `(i + 0.5)`. Converter 4 inteiros de
+     *    64 bits para double numa instrução só (`vcvtqq2pd`) exige AVX-512, que
+     *    o Ryzen 5 5600X (Zen 3, só AVX2) não tem; sem ela o GCC desiste.
+     *
+     * Versão final: o laço externo (blocos de BLOCO iterações, índice
+     *    `long long`, permite N até 10^10) é dividido entre as threads com
+     *    `parallel for reduction`; o laço interno usa índice `int` (32 bits,
+     *    convertido com `vcvtdq2pd`, que existe no AVX2) e `#pragma omp simd
+     *    reduction`, processando 4 doubles por instrução (`vdivpd` em ymm).
+     *    `x` continua bit a bit igual a (i + 0.5) * step, pois `xb` e `j` são
+     *    inteiros < 2^53 representados exatamente em double.
+     * - Reassociação: cada thread passa a somar em 4 "pistas" e depois combina,
+     *   outra ordem de soma. Como (a+b)+c != a+(b+c) em ponto flutuante,
+     *   pi_par difere de pi_seq lá pelo 13º-15º dígito, muito abaixo da
+     *   tolerância |Delta_rel| <= 1e-9.
      */
+#if defined(P1_SIMD)
+    const long long BLOCO = 1 << 16;
+    const long long nblocos = (N + BLOCO - 1) / BLOCO;
+    #pragma omp parallel for reduction(+:sum) schedule(static)
+    for (long long b = 0; b < nblocos; b++) {
+        const long long base = b * BLOCO;
+        const int len = (int)((N - base < BLOCO) ? (N - base) : BLOCO);
+        const double xb = (double)base;
+        #pragma omp simd reduction(+:sum)
+        for (int j = 0; j < len; j++) {
+            double x = (xb + (double)j + 0.5) * step;
+            sum += 4.0 / (1.0 + x * x);
+        }
+    }
+    return step * sum;
+#endif
     /*
      * SOLUÇÃO DO TODO 1 (Membro 1 - Kernel Paralelo Base e Escopo):
      * - `parallel for`: divide as N iterações do laço entre as P threads.
@@ -119,11 +145,7 @@ static double calcular_pi_paralelo(long long N) {
      * - Escopo: `i` (índice do omp for) e `x` (declarada dentro do laço) são
      *   PRIVADAS; `N` e `step` são SHARED (só leitura); `sum` é REDUCTION.
      */
-#if defined(P1_SIMD)
-    #pragma omp parallel for simd reduction(+:sum) schedule(static)
-#else
     #pragma omp parallel for reduction(+:sum) schedule(static)
-#endif
     for (long long i = 0; i < N; i++) {
         double x = (i + 0.5) * step;
         sum += 4.0 / (1.0 + x * x);
