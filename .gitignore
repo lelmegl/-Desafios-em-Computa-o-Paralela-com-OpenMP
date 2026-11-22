@@ -13,3 +13,7 @@
 *.expected
 # entradas de benchmark (grandes demais para o GitHub)
 entrada_grande.in
+/Intermediario/P4_histogram/P4_bench_B
+/Intermediario/P4_histogram/P4_bench_atomic
+/Avancado/P8_mandelbrot/P8_collapse
+/Avancado/P8_mandelbrot/P8_collapse_bench

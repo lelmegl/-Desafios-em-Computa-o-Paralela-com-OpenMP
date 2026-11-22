@@ -1,0 +1,9 @@
+schedule,T_total_s,max_min
+"static",25.5129,1182.50
+"static,1",10.3620,1.01
+"dynamic,1",10.3182,1.00
+"dynamic,16",10.3335,1.00
+"dynamic,64",10.3584,1.00
+"guided",18.1516,4.79
+"collapse(2) dynamic,256",10.329708,
+"collapse(2) guided,256",18.150297,
