@@ -4,7 +4,7 @@
 #           tempo total + desbalanceamento max/min entre threads -> comparacao_schedules_p8.csv
 #  Parte 2: tabela oficial P em {1,2,4,6} com a politica fixada no codigo (P8_bench)
 #           -> resultados_p8.csv + graficos_p8.png (validacao byte a byte em cada P)
-#  Parte 1b: variante collapse(2) do Membro 3 (P8_collapse_bench) com dynamic,256 e guided,256
+#  Parte 1b: variante collapse(2) do Membro 3 (P8_collapse_bench) com dynamic,256, guided,256 e dynamic,1 (contraprova)
 # Entrada padrao = referencia do Apendice B.4: W = H = 10^4, Imax = 10^4 (leva horas).
 # Para rodar em etapas: PARTE=1 ./bench_p8.sh  (so schedules)  |  PARTE=2 ./bench_p8.sh  (so tabela)
 # Uso (dentro de Avancado/P8_mandelbrot):  ./bench_p8.sh [W H Imax]
@@ -30,8 +30,8 @@ for S in "static" "static,1" "dynamic,1" "dynamic,16" "dynamic,64" "guided"; do
     echo "\"$S\",$T,$R" >> comparacao_schedules_p8.csv
 done
 
-echo; echo "=== Parte 1b: collapse(2) com chunk 256 (P = 6, mediana de 5) ==="
-for S in "dynamic,256" "guided,256"; do
+echo; echo "=== Parte 1b: collapse(2) com chunk 256 + contraprova dynamic,1 (P = 6, mediana de 5) ==="
+for S in "dynamic,256" "guided,256" "dynamic,1"; do
     LOG=$(OMP_NUM_THREADS=6 OMP_SCHEDULE="$S" ./P8_collapse_bench < "$ENTRADA" 2>&1 >/dev/null)
     echo "$LOG" | grep -q 'Validacao P8 OK' || { echo "ERRO: validacao collapse falhou ($S)"; exit 1; }
     T=$(echo "$LOG" | sed -n 's/.*T_par (mediana) = \([0-9.]*\).*/\1/p')
